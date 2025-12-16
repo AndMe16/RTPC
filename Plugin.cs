@@ -168,10 +168,39 @@ namespace RTPC
                 CollectBlocksFromFolder(sub, result, depth + 1);
             }
         }
+        private void CollectIncludedBlocks(BlocksFolder folder,List<BlockProperties> result,HashSet<int> alreadyAdded)
+        {
+            if (folder == null)
+                return;
+
+            foreach (var block in folder.blocks)
+            {
+                if (block == null)
+                    continue;
+
+                if (!FilterCache.IncludedBlocks.Contains(block.blockID))
+                    continue;
+
+                if (alreadyAdded.Contains(block.blockID))
+                    continue;
+
+                result.Add(block);
+                alreadyAdded.Add(block.blockID);
+
+                Logger.LogInfo($"⭐ Forced Include Block: {block.name} ({block.blockID})");
+            }
+
+            foreach (var sub in folder.folders)
+            {
+                CollectIncludedBlocks(sub, result, alreadyAdded);
+            }
+        }
+
 
         private List<BlockProperties> BuildFilteredBlockList(BlocksFolder globalRoot)
         {
             var result = new List<BlockProperties>();
+            var addedBlockIds = new HashSet<int>();
 
             var includedRoots = FindIncludedRoots(
                 globalRoot,
@@ -183,6 +212,13 @@ namespace RTPC
                 CollectBlocksFromFolder(root, result);
             }
 
+            foreach (var block in result)
+            {
+                addedBlockIds.Add(block.blockID);
+            }
+
+            CollectIncludedBlocks(globalRoot, result, addedBlockIds);
+
             return result;
         }
 
@@ -190,7 +226,6 @@ namespace RTPC
         {
             if (Instance == null || !Instance.LevelEditorCentral || !Instance.LevelEditorCentral.inspector || !Instance.LevelEditorCentral.inspector.globalBlockList)
                 return;
-            FilterCache.Refresh();
             Instance.blockList = Instance.BuildFilteredBlockList(
                 Instance.LevelEditorCentral.inspector.globalBlockList.globalBlocksFolder
             );
@@ -212,12 +247,14 @@ namespace RTPC
         public static ConfigEntry<String> IncludedFoldersRaw;
         public static ConfigEntry<String> ExcludedFoldersRaw;
         public static ConfigEntry<String> ExcludedBlocksRaw;
+        public static ConfigEntry<String> IncludedBlocksRaw;
 
 
         public static List<string> IncludedFolders => ParseStringList(IncludedFoldersRaw.Value);
         public static List<string> ExcludedFolders => ParseStringList(ExcludedFoldersRaw.Value);
         public static List<int> ExcludedBlocks => ParseIntList(ExcludedBlocksRaw.Value);
-        
+        public static List<int> IncludedBlocks => ParseIntList(IncludedBlocksRaw.Value);
+
 
         // Constructor that takes a ConfigFile instance from the main class
         public static void Initialize(ConfigFile config)
@@ -230,15 +267,19 @@ namespace RTPC
                 "List of folder IDs to exclude from randomization");
             ExcludedBlocksRaw = config.Bind("2. Filter", "2.3 Excluded Blocks", "",
                 "List of block IDs to exclude from randomization");
+            IncludedBlocksRaw = config.Bind("2. Filter", "2.4 Included Blocks", "",
+                "List of block IDs to include in randomization (overrides folder filters)");
 
             IncludedFoldersRaw.SettingChanged += onFilterChanged;
             ExcludedFoldersRaw.SettingChanged += onFilterChanged;
             ExcludedBlocksRaw.SettingChanged += onFilterChanged;
+            IncludedBlocksRaw.SettingChanged += onFilterChanged;
         }
 
 
         private static void onFilterChanged(object sender, System.EventArgs e)
         {
+            FilterCache.Refresh();
             Plugin.UpdateBlockList();
         }
 
@@ -266,6 +307,7 @@ namespace RTPC
             IncludedFoldersRaw.SettingChanged -= onFilterChanged;
             ExcludedFoldersRaw.SettingChanged -= onFilterChanged;
             ExcludedBlocksRaw.SettingChanged -= onFilterChanged;
+            IncludedBlocksRaw.SettingChanged -= onFilterChanged;
         }
 
     }
@@ -275,12 +317,14 @@ namespace RTPC
         public static HashSet<string> IncludedFolders;
         public static HashSet<string> ExcludedFolders;
         public static HashSet<int> ExcludedBlocks;
+        public static HashSet<int> IncludedBlocks;
 
         public static void Refresh()
         {
             IncludedFolders = new HashSet<string>(ModConfig.IncludedFolders);
             ExcludedFolders = new HashSet<string>(ModConfig.ExcludedFolders);
             ExcludedBlocks = new HashSet<int>(ModConfig.ExcludedBlocks);
+            IncludedBlocks = new HashSet<int>(ModConfig.IncludedBlocks);
         }
     }
 
