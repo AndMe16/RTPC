@@ -170,7 +170,7 @@ namespace RTPC
                 return;
 
             string indent = new string(' ', depth * 2);
-            Logger.LogInfo($"{indent}📁 Folder: {folder.folderID}");
+            LogDebug($"{indent}📁 Folder: {folder.folderID}");
 
             foreach (var block in folder.blocks)
             {
@@ -182,7 +182,7 @@ namespace RTPC
 
                 result.Add(block);
 
-                Logger.LogInfo($"{indent}  🧱 Block: {block.name}");
+                LogDebug($"{indent}  🧱 Block: {block.name}");
             }
 
             foreach (var sub in folder.folders)
@@ -209,7 +209,7 @@ namespace RTPC
                 result.Add(block);
                 alreadyAdded.Add(block.blockID);
 
-                Logger.LogInfo($"⭐ Forced Include Block: {block.name} ({block.blockID})");
+                LogDebug($"⭐ Forced Include Block: {block.name} ({block.blockID})");
             }
 
             foreach (var sub in folder.folders)
@@ -260,6 +260,13 @@ namespace RTPC
             harmony?.UnpatchSelf();
             harmony = null;
         }
+        internal static void LogDebug(string message)
+        {
+            if (ModConfig.DebugLogging.Value)
+            {
+                MyLogger.LogInfo(message);
+            }
+        }
 
 
     }
@@ -270,6 +277,8 @@ namespace RTPC
         public static ConfigEntry<String> ExcludedFoldersRaw;
         public static ConfigEntry<String> ExcludedBlocksRaw;
         public static ConfigEntry<String> IncludedBlocksRaw;
+        public static ConfigEntry<bool> DebugLogging;
+
 
 
         public static List<string> IncludedFolders => ParseStringList(IncludedFoldersRaw.Value);
@@ -291,6 +300,8 @@ namespace RTPC
                 "List of block IDs to exclude from randomization");
             IncludedBlocksRaw = config.Bind("2. Filter", "2.4 Included Blocks", "",
                 "List of block IDs to include in randomization (overrides folder filters)");
+            DebugLogging = config.Bind("3. Debug", "3.1 Enable Debug Logging", false,
+                "Enable detailed debug logging to help with troubleshooting");
 
             IncludedFoldersRaw.SettingChanged += onFilterChanged;
             ExcludedFoldersRaw.SettingChanged += onFilterChanged;
