@@ -60,10 +60,32 @@ namespace RTPC
 
             if (Input.GetKeyDown(ModConfig.Randomize.Value) && !LevelEditorCentral.input.inputLocked)
             {
+                if (LevelEditorCentral.gizmos.isGrabbing && !LevelEditorCentral.gizmos.isDragging && LevelEditorCentral.selection != null)
+                {
+                    if (LevelEditorCentral.selection.list.Count > 0)
+                    {
+                        MyLogger.LogInfo("Grabbing a block/selection, placing it before randomizing");
+                        PlaceSelection();
+                    }
+                }
 
                 RandomizeBlock();
             }
 
+        }
+
+        private void PlaceSelection()
+        {
+            LEV_GizmoHandler gizmos = LevelEditorCentral.gizmos;
+            gizmos.creatingNewBlockLock = false;
+            if (gizmos.central.manager != null)
+            {
+                gizmos.central.manager.steamAchiever.AddIntToStat("stat_blocks_placed", gizmos.central.selection.list.Count);
+            }
+            List<string> after3 = gizmos.central.undoRedo.ConvertBlockListToJSONList(gizmos.central.selection.list);
+            List<string> afterSelection3 = gizmos.central.undoRedo.ConvertSelectionToStringList(gizmos.central.selection.list);
+            gizmos.GoOutOfGMode();
+            gizmos.central.validation.BreakLock(gizmos.central.undoRedo.ConvertBeforeAndAfterListToCollection(gizmos.gModeBeforeList, after3, gizmos.central.selection.list, gizmos.gModeBefore_selectionUIDs, afterSelection3), "RTPC_Mod");
         }
 
         private void RandomizeBlock()
