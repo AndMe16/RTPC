@@ -107,9 +107,41 @@ namespace RTPC
 
             LevelEditorCentral.gizmos.CreateNewBlock(selectedBlock.blockID);
 
+            if (UnityEngine.Random.value < 0.5f)
+            {
+                FlipBlock();
+            }
+
         }
 
+        private void FlipBlock()
+        {
+            if (!LevelEditorCentral) return;
 
+            var selection = LevelEditorCentral.selection.list;
+
+            if (selection == null || selection.Count == 0)
+            {
+                MyLogger.LogWarning("No blocks selected to flip.");
+                return;
+            }
+
+            List<string> before = LevelEditorCentral.undoRedo.ConvertBlockListToJSONList(LevelEditorCentral.selection.list);
+
+            foreach (var block in selection)
+            {
+                if (!block.flippable) continue;
+
+                var scale = block.transform.localScale;
+                scale.x *= -1f;
+                block.transform.localScale = scale;
+            }
+
+            List<string> after = LevelEditorCentral.undoRedo.ConvertBlockListToJSONList(selection);
+            List<string> selectionStrings = LevelEditorCentral.undoRedo.ConvertSelectionToStringList(selection);
+            LevelEditorCentral.validation.BreakLock(LevelEditorCentral.undoRedo.ConvertBeforeAndAfterListToCollection(before, after, selection, selectionStrings, selectionStrings), "RTPC_Mod");
+            MyLogger.LogInfo("Flipped block!");
+        }
 
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
@@ -240,6 +272,8 @@ namespace RTPC
             }
 
             CollectIncludedBlocks(globalRoot, result, addedBlockIds);
+
+            result = result.GroupBy(x => x.blockID).Select(g => g.First()).ToList();
 
             return result;
         }
